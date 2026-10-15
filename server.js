@@ -21,7 +21,7 @@ import {
     initiateApp,
 } from "./src/Helper/apiHelper.js";
 
-
+import { seed } from "./src/routes/seedTemplates.js";
 // ======================================================
 // ERROR HANDLING
 // ======================================================
@@ -119,6 +119,10 @@ const tasks = await TodolistSchema.find({ alarm: { $ne: null } });
   tasks.forEach(task => scheduleAlarm(task));
 };
 initAlarms();
+// ======================================================
+// Seed Templated
+// ======================================================
+  seed();
 // ======================================================
 // HTTP SERVER
 // ======================================================
