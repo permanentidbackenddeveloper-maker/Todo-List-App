@@ -6,12 +6,15 @@ import { TodolistSchema } from "../models/todolistModels.js";
 
 const jobs = {};
 
+// =================================================================================
+// Schedule Alarm
+// =================================================================================
 export const scheduleAlarm = (task) => {
   if (!task.reminderDate && !task.reminderTime) return;
 
   const date = new Date(task.reminderDate || task.alarm);
-  const [hour, minute] = task.reminderTime 
-    ? task.reminderTime.split(":").map(Number) 
+  const [hour, minute] = task.reminderTime
+    ? task.reminderTime.split(":").map(Number)
     : [date.getHours(), date.getMinutes()];
 
   const key = `${task._id}`;
@@ -42,27 +45,27 @@ export const scheduleAlarm = (task) => {
   });
 };
 
+// =================================================================================
+// Add Reminder
+// =================================================================================
 export const addReminder = async (req, res) => {
- 
-
   try {
-  const { reminderDate, reminderTime, recurring } = req.body;
-      const tdlId = req.params.id;
-      const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
-  
-      const task = await TodolistSchema.findOne({ userId, tdlId });
+    const { reminderDate, reminderTime, recurring } = req.body;
+    const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    const userId = await getUserIdFromToken(token);
 
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Todolist not found.",
-        });
-      
-      }
+    const task = await TodolistSchema.findOne({ userId, tdlId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Todolist not found.",
+      });
+    }
     task.reminderDate = reminderDate;
     task.reminderTime = reminderTime;
-    task.recurring = recurring || 'none';
+    task.recurring = recurring || "none";
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
@@ -72,24 +75,26 @@ export const addReminder = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-// Controller function
+
+// =================================================================================
+// Set Reminder Date
+// =================================================================================
 export const setReminderDate = async (req, res) => {
   const { reminderDate } = req.body;
 
   try {
     const tdlId = req.params.id;
-      const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
-  
-      const task = await TodolistSchema.findOne({ userId, tdlId });
-    
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Todolist not found.",
-        });
-      
-      }
+    const token = req.header("Authorization");
+    const userId = await getUserIdFromToken(token);
+
+    const task = await TodolistSchema.findOne({ userId, tdlId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Todolist not found.",
+      });
+    }
     task.reminderDate = reminderDate;
     await task.save();
 
@@ -100,23 +105,26 @@ export const setReminderDate = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// =================================================================================
+// Set Reminder Time
+// =================================================================================
 export const setReminderTime = async (req, res) => {
   const { reminderTime } = req.body;
 
   try {
-  const tdlId = req.params.id;
-      const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
-  
-      const task = await TodolistSchema.findOne({ userId, tdlId });
-     
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Todolist not found.",
-        });
-      
-      }
+    const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    const userId = await getUserIdFromToken(token);
+
+    const task = await TodolistSchema.findOne({ userId, tdlId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Todolist not found.",
+      });
+    }
     task.reminderTime = reminderTime;
     await task.save();
 
@@ -127,25 +135,26 @@ export const setReminderTime = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// =================================================================================
+// Edit Reminder
+// =================================================================================
 export const editReminder = async (req, res) => {
- 
-
   try {
-  const { reminderDate, reminderTime, recurring } = req.body;
-      const tdlId = req.params.id;
-      const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
-  
-      const task = await TodolistSchema.findOne({ userId, tdlId });
+    const { reminderDate, reminderTime, recurring } = req.body;
+    const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    const userId = await getUserIdFromToken(token);
 
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Todolist not found.",
-        });
-      
-      }
-   // Update only provided fields
+    const task = await TodolistSchema.findOne({ userId, tdlId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Todolist not found.",
+      });
+    }
+    // Update only provided fields
     if (reminderDate) task.reminderDate = reminderDate;
     if (reminderTime) task.reminderTime = reminderTime;
     if (recurring) task.recurring = recurring;
@@ -158,25 +167,26 @@ export const editReminder = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// =================================================================================
+// Delete Reminder
+// =================================================================================
 export const deleteReminder = async (req, res) => {
- 
-
   try {
-      const tdlId = req.params.id;
-      const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
-  
-      const task = await TodolistSchema.findOne({ userId, tdlId });
+    const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    const userId = await getUserIdFromToken(token);
 
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Todolist not found.",
-        });
-      
-      }
-   // Delete reminder
-  task.reminderDate = null;
+    const task = await TodolistSchema.findOne({ userId, tdlId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Todolist not found.",
+      });
+    }
+    // Delete reminder
+    task.reminderDate = null;
     task.reminderTime = null;
     task.recurring = "none";
     await task.save();
@@ -188,43 +198,39 @@ export const deleteReminder = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-export const snoozeReminder  = async (req, res) => {
- 
-  const { snoozeMinutes } = req.body; // e.g. 5, 10, 30
-  try {
-      const tdlId = req.params.id;
-      const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
-  
-      const task = await TodolistSchema.findOne({ userId, tdlId });
 
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Todolist not found.",
-        });
-      
-      }
+// =================================================================================
+// Snooze Reminder 
+// =================================================================================
+export const snoozeReminder = async (req, res) => {
+  // const { snoozeMinutes } = req.body; // e.g. 5, 10, 30
+  try {
+    const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    const userId = await getUserIdFromToken(token);
+
+    const task = await TodolistSchema.findOne({ userId, tdlId });
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        message: "Todolist not found.",
+      });
+    }
     // Calculate new reminder time
 
+    const snoozeMinutes = Number(req.body.snoozeMinutes);
+    const currentDate = new Date(task.reminderDate);
+    if (task.reminderTime) {
+      const [hour, minute] = task.reminderTime.split(":").map(Number);
+      currentDate.setHours(hour, minute, 0, 0);
+    }
 
-const currentDate = new Date(task.reminderDate);
-
-if (task.reminderTime) {
-  const [hour, minute] = task.reminderTime.split(":").map(Number);
-  currentDate.setHours(hour, minute, 0, 0);
-}
-
-console.log("currentDate.getTime()", currentDate.getTime());
-
-const newDate = new Date(currentDate.getTime() + snoozeMinutes * 60000);
-
-console.log("newDate", newDate);
+    const newDate = new Date(currentDate.getTime() + snoozeMinutes * 60000);
 
     task.reminderDate = newDate.toISOString().split("T")[0];
-    task.reminderTime = newDate.toTimeString().slice(0,5); // HH:mm format
-    console.log(task.reminderDate,task.reminderTime);
-    
+    task.reminderTime = newDate.toTimeString().slice(0, 5); // HH:mm format
+    console.log(task.reminderDate, task.reminderTime);
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
