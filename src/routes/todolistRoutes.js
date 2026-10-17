@@ -4,15 +4,16 @@ import multer from "multer";
 import { TodolistSchema } from "../models/todolistModels.js";
 import { authendicate } from "../middleware/middleware.js";
 import { getUserIdFromToken } from "../Helper/helper.js";
-import { gridfsbucket } from "../Helper/db.js";
+import { gridfsbucket } from "../config/db.js";
 import mongoose from "mongoose";
-import { addReminder ,
+import {
+  addReminder,
   scheduleAlarm,
   setReminderDate,
   setReminderTime,
   editReminder,
   deleteReminder,
-  snoozeReminder
+  snoozeReminder,
 } from "../Helper/alarm.js";
 // import { syncTaskToCalendar } from "../helpers/calendar.js";
 
@@ -87,11 +88,11 @@ router.post(
       };
 
       const task = await TodolistSchema.create(tdlStructure);
-   // Schedule reminder if present
-    scheduleAlarm(task);
+      // Schedule reminder if present
+      scheduleAlarm(task);
       return res
         .status(200)
-        .json({ success: true, data: "Todolist created successfully!" ,task});
+        .json({ success: true, data: "Todolist created successfully!", task });
     } catch (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
@@ -116,7 +117,7 @@ router.put(
         recurring,
         status,
         noteType,
-        pin
+        pin,
       } = req.body;
 
       const tdlId = req.params.id;
@@ -155,8 +156,8 @@ router.put(
           recurring: recurring || null,
           status: status || undefined,
           updatedAt: today,
-          noteType : noteType ,
-          isPin : pin
+          noteType: noteType,
+          isPin: pin,
         },
       };
 
@@ -245,7 +246,7 @@ router.post("/api/updateTdlStatus", authendicate, async (req, res) => {
 });
 
 // ========================================================================
-// Get Todo List 
+// Get Todo List
 // ========================================================================
 
 router.post("/api/getTodos", authendicate, async (req, res) => {
@@ -378,7 +379,7 @@ router.post("/api/deleteTodos/:id", authendicate, async (req, res) => {
     const userId = await getUserIdFromToken(token);
 
     const isexist = await TodolistSchema.find({ userId, tdlId });
-  
+
     if (!isexist) {
       return res.status(404).json({
         success: false,
@@ -404,9 +405,9 @@ router.post("/api/deleteTodos/:id", authendicate, async (req, res) => {
 });
 
 // ========================================================================
-// Add Reminder 
+// Add Reminder
 // ========================================================================
-router.post("/api/addReminder/:id",authendicate, addReminder) 
+router.post("/api/addReminder/:id", authendicate, addReminder);
 
 // ========================================================================
 // Set Reminder Date
@@ -433,6 +434,88 @@ router.post("/api/deleteReminder/:id", authendicate, deleteReminder);
 // ========================================================================
 router.post("/api/snoozeReminder/:id", authendicate, snoozeReminder);
 
+router.post("/api/changePinNote/:id", async (req, res) => {
+  try {
+    const { pin } = req.body;
 
+    const tdlId = req.params.id;
+
+    // Update everything
+    const updateData = {
+      $set: { isPin: pin },
+    };
+    const updatedPinTask = await TodolistSchema.findOneAndUpdate(
+      { tdlId },
+      updateData,
+      { new: true },
+    );
+    if (!updatedPinTask) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Todolist not found" });
+    }
+
+    return res.status(200).json({ success: true, data: updatedPinTask });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.post("/api/lockNote/:id", async (req, res) => {
+  try {
+    const { lockPin } = req.body;
+    const tdlId = req.params.id;
+
+    const noteData = await TodolistSchema.findOne({ tdlId: tdlId });
+    if (!noteData) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Todolist not found..!!" });
+    }
+    await noteData.setPin(lockPin);
+    noteData.locked = true;
+    await noteData.save();
+  
+        return res
+          .status(200)
+          .json({ success: true, message: "Note Locked successfully..!!", data : noteData });
+    
+  } catch (error) {
+    return res.status(500).json({ success: true, error: error.message });
+  }
+});
+router.post("/api/unlockNote/:id", async (req, res) => {
+  try {
+    const { lockPin } = req.body;
+    const tdlId = req.params.id;
+
+    const noteData = await TodolistSchema.findOne({ tdlId: tdlId });
+    if (!noteData) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Todolist not found..!!" });
+    }
+    if (!noteData.locked) {
+      return res.json({ message: "Note is not locked" });
+    }
+
+    const valid = await noteData.verifyPin(lockPin);
+
+    if (!valid) {
+      return res.json({ message: "Invalid PIN" });
+    }
+
+    noteData.locked = false;
+    noteData.lockPin = null;
+    await noteData.save();
+   
+        return res
+          .status(200)
+          .json({ success: true, message: "Note Unlocked successfully..!!", data : noteData });
+     
+  } catch (error) {
+    return res.status(500).json({ success: true, error: error.message });
+  }
+});
 
 export default router;

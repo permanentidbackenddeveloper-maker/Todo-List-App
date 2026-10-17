@@ -10,7 +10,6 @@ const router = express.Router();
 // Get all templates
 // ==========================================================================
 router.get("/api/getAllTemplates", async (req, res) => {
-    console.log("get");
    try {
  
      const templates = await TemplateSchema.find();

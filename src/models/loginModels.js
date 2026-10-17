@@ -14,6 +14,7 @@ export const UserLoginCredentials = mongoose.model(
             fcmToken: String,
             isLoggedin: Boolean,
             Description: String,
+            language: { type: String, default: "en" } ,// en, ta, hi, etc.
             pinedUsers: [{
                 userName: String,
                 userId: String

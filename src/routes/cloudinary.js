@@ -3,7 +3,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { v2 as cloudinary } from "cloudinary";
-import { getFolderByMimeType, getUserIdFromToken } from '../Helper/helper.js';
+import { getFolderByMimeType, getUserIdFromToken } from '../helper/helper.js';
 import { authendicate } from '../middleware/middleware.js';
 import { UserLoginCredentials } from '../models/loginModels.js';
 

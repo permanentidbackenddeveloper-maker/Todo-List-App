@@ -1,6 +1,6 @@
 import cron from "node-cron";
 
-import { getUserIdFromToken } from "../Helper/helper.js";
+import { getUserIdFromToken } from "./helper.js";
 
 import { TodolistSchema } from "../models/todolistModels.js";
 
@@ -230,7 +230,6 @@ export const snoozeReminder = async (req, res) => {
 
     task.reminderDate = newDate.toISOString().split("T")[0];
     task.reminderTime = newDate.toTimeString().slice(0, 5); // HH:mm format
-    console.log(task.reminderDate, task.reminderTime);
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
