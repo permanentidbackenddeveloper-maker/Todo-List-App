@@ -1,7 +1,9 @@
+// =============================================================================
+// REMINDER
+// =============================================================================
+
 import cron from "node-cron";
-
 import { getUserIdFromToken } from "./helper.js";
-
 import { TodolistSchema } from "../models/todolistModels.js";
 
 const jobs = {};
@@ -69,8 +71,9 @@ export const addReminder = async (req, res) => {
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
-
-    res.json({ message: "Reminder added successfully", task });
+    return res
+      .status(200)
+      .json({ message: "Reminder added successfully", task });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -80,9 +83,8 @@ export const addReminder = async (req, res) => {
 // Set Reminder Date
 // =================================================================================
 export const setReminderDate = async (req, res) => {
-  const { reminderDate } = req.body;
-
   try {
+    const { reminderDate } = req.body;
     const tdlId = req.params.id;
     const token = req.header("Authorization");
     const userId = await getUserIdFromToken(token);
@@ -99,8 +101,9 @@ export const setReminderDate = async (req, res) => {
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
-
-    res.json({ message: "Reminder date set successfully", task });
+    return res
+      .status(200)
+      .json({ message: "Reminder date set successfully", task });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -110,9 +113,8 @@ export const setReminderDate = async (req, res) => {
 // Set Reminder Time
 // =================================================================================
 export const setReminderTime = async (req, res) => {
-  const { reminderTime } = req.body;
-
   try {
+    const { reminderTime } = req.body;
     const tdlId = req.params.id;
     const token = req.header("Authorization");
     const userId = await getUserIdFromToken(token);
@@ -129,8 +131,9 @@ export const setReminderTime = async (req, res) => {
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
-
-    res.json({ message: "Reminder time set successfully", task });
+    return res
+      .status(200)
+      .json({ message: "Reminder time set successfully", task });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -162,7 +165,9 @@ export const editReminder = async (req, res) => {
 
     scheduleAlarm(task); // schedule after saving
 
-    res.json({ message: "Reminder updated successfully", task });
+    return res
+      .status(200)
+      .json({ message: "Reminder updated successfully", task });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -193,14 +198,16 @@ export const deleteReminder = async (req, res) => {
 
     scheduleAlarm(task); // schedule after saving
 
-    res.json({ message: "Reminder updated successfully", task });
+    return res
+      .status(200)
+      .json({ message: "Reminder deleted successfully", task });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
 // =================================================================================
-// Snooze Reminder 
+// Snooze Reminder
 // =================================================================================
 export const snoozeReminder = async (req, res) => {
   // const { snoozeMinutes } = req.body; // e.g. 5, 10, 30
@@ -217,10 +224,11 @@ export const snoozeReminder = async (req, res) => {
         message: "Todolist not found.",
       });
     }
-    // Calculate new reminder time
 
+    // Calculate new reminder time
     const snoozeMinutes = Number(req.body.snoozeMinutes);
     const currentDate = new Date(task.reminderDate);
+
     if (task.reminderTime) {
       const [hour, minute] = task.reminderTime.split(":").map(Number);
       currentDate.setHours(hour, minute, 0, 0);
@@ -234,7 +242,9 @@ export const snoozeReminder = async (req, res) => {
 
     scheduleAlarm(task); // schedule after saving
 
-    res.json({ message: "Reminder updated successfully", task });
+    return res
+      .status(200)
+      .json({ message: "Snooze Reminder set successfully", task });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

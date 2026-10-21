@@ -23,11 +23,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // ========================================================================
 // Creat new Todo List
 // ========================================================================
-router.post(
-  "/api/createTodolist",
-  upload.array("file", 5),
-  authendicate,
-  async (req, res) => {
+router.post("/api/createTodolist", upload.array("file", 5), authendicate,async (req, res) => {
     try {
       const {
         title,
@@ -44,9 +40,10 @@ router.post(
 
       const token = req.header("Authorization");
       const userId = await getUserIdFromToken(token);
-
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+
+      // Format as YYYY-MM-DD in local time
+      const formatted = today.toISOString().split("T")[0];
       const selectedDate = new Date(date);
       selectedDate.setHours(0, 0, 0, 0);
 
@@ -102,11 +99,7 @@ router.post(
 // ========================================================================
 // Update Todo List Details
 // ========================================================================
-router.put(
-  "/api/updateTodolist/:id",
-  upload.array("file", 5),
-  authendicate,
-  async (req, res) => {
+router.put( "/api/updateTodolist/:id", upload.array("file", 5), authendicate, async (req, res) => {
     try {
       const {
         title,
@@ -189,61 +182,75 @@ router.put(
 // Update Todo List Status
 // ========================================================================
 
-router.post("/api/updateTdlStatus", authendicate, async (req, res) => {
-  try {
-    const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-    const getAllTodolist = await TodolistSchema.find({ userId: userId });
-    if (getAllTodolist.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "There is no data found for this user..!!",
+router.put("/api/updateTdlStatus/:tdlId",authendicate,async (req, res) => {
+    try {
+      const { tdlId } = req.params;
+      const { status } = req.body;
+
+      const validStatuses = ["Upcoming", "Today", "Completed"];
+
+      if (!tdlId) {
+        return res.status(400).json({
+          success: false,
+          message: "Task ID is required.",
+        });
+      }
+
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid status value.",
+        });
+      }
+
+      const token = req.header("Authorization");
+      const userId = await getUserIdFromToken(token);
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid authentication token.",
+        });
+      }
+
+      const task = await TodolistSchema.findOne({
+        tdlId,
+        userId: String(userId),
       });
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const getFutureTdl = getAllTodolist.filter(
-      (data) => data.status === "Upcoming",
-    );
-    const updateTodayTdl = getFutureTdl.map(async (item) => {
-      const itemDate = new Date(item.date);
-      itemDate.setHours(0, 0, 0, 0);
 
-      if (itemDate.getTime() === today.getTime()) {
-        await TodolistSchema.updateOne(
-          { tdlId: item.tdlId },
-          { $set: { status: "Today" } },
-        );
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          message: "Task not found for this user.",
+        });
       }
-    });
-    const getTodayTdl = getAllTodolist.filter(
-      (data) => data.status === "Today",
-    );
-    const updateCompletedTdl = getTodayTdl.map(async (item) => {
-      const itemDate = new Date(item.date);
-      itemDate.setHours(0, 0, 0, 0);
 
-      if (itemDate.getTime() < today.getTime()) {
-        await TodolistSchema.updateOne(
-          { tdlId: item.tdlId },
-          { $set: { status: "Completed" } },
-        );
-      }
-    });
-    if (updateTodayTdl || updateCompletedTdl) {
+      task.status = status;
+      task.updatedAt = new Date();
+
+      await task.save();
+
+      console.log("Checklist widget updated:", {
+        tdlId,
+        status,
+        userId: String(userId),
+      });
+
       return res.status(200).json({
         success: true,
-        data: "Todo's status updated successfully..!!",
+        message: "Task status updated successfully.",
+        task,
       });
-    } else {
-      return res
-        .status(400)
-        .json({ success: false, error: "Can't update Todo's status..!!" });
+    } catch (error) {
+      console.error("Update task status error:", error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Server error while updating task status.",
+      });
     }
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
   }
-});
+);
 
 // ========================================================================
 // Get Todo List
@@ -475,11 +482,14 @@ router.post("/api/lockNote/:id", async (req, res) => {
     await noteData.setPin(lockPin);
     noteData.locked = true;
     await noteData.save();
-  
-        return res
-          .status(200)
-          .json({ success: true, message: "Note Locked successfully..!!", data : noteData });
-    
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Note Locked successfully..!!",
+        data: noteData,
+      });
   } catch (error) {
     return res.status(500).json({ success: true, error: error.message });
   }
@@ -508,11 +518,14 @@ router.post("/api/unlockNote/:id", async (req, res) => {
     noteData.locked = false;
     noteData.lockPin = null;
     await noteData.save();
-   
-        return res
-          .status(200)
-          .json({ success: true, message: "Note Unlocked successfully..!!", data : noteData });
-     
+
+    return res
+      .status(200)
+      .json({
+        success: true,
+        message: "Note Unlocked successfully..!!",
+        data: noteData,
+      });
   } catch (error) {
     return res.status(500).json({ success: true, error: error.message });
   }

@@ -23,10 +23,6 @@ cloudinary.config({
 
 const upload = multer({ dest: "temp/" });
 
-router.get("/api/checkServer", async (req, res) => {
-  console.log("Server is running...");
-});
-
 router.post("/api/userRegister", upload.single("profile"), async (req, res) => {
   try {
     const { userId, userName, email, password, confirmPassword } = req.body;
@@ -167,11 +163,7 @@ router.post("/api/getUser", async (req, res) => {
   }
 });
 
-router.post(
-  "/api/updateUserDetails",
-  authendicate,
-  upload.single("file"),
-  async (req, res) => {
+router.post("/api/updateUserDetails",authendicate, upload.single("file"),async (req, res) => {
     try {
       const token = req.header("Authorization");
       if (!token) {
@@ -268,35 +260,6 @@ router.post("/api/sendFcmTokenToBackend", authendicate, async (req, res) => {
   }
 });
 
-// 🔑 Change language API
-router.put("/api/setLanguage", authendicate, async (req, res) => {
-  try {
-    const { language } = req.body; // e.g. "ta", "en", "hi"
-    const supportedLanguages = ["en", "ta", "hi"];
 
-    if (!supportedLanguages.includes(language)) {
-      return res.status(400).json({ message: "Unsupported language" });
-    }
-
-    const token = req.header("Authorization");
-    const decoded = await getUserIdFromToken(token); // { userId: "1234" }
-
-    const user = await UserLoginCredentials.findOne({ userId: decoded.userId });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    user.language = language;
-    await user.save();
-
-    return res.status(200).json({
-      success: true,
-      message: `Language updated to ${language}`,
-      language: user.language,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
 
 export default router;

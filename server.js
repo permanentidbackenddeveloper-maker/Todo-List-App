@@ -19,8 +19,6 @@ import "./src/config/db.js"; // ensures DB + GridFSBucket initialized
 import { initiateApp } from "./src/helper/apiHelper.js";
 
 import { seed } from "./src/routes/seedTemplates.js";
-import { languageMiddleware } from "./src/middleware/languageMiddleware.js";
-import i18n from "./src/config/i18n.js";
 
 // ======================================================
 // ERROR HANDLING
@@ -54,18 +52,7 @@ const port = Number(process.env.PORT) || 5001;
 // ======================================================
 // CORS
 // ======================================================
-// Attach i18n
-app.use(i18n.init);
 
-// Attach language middleware
-app.use(languageMiddleware);
-// ✅ Place your welcome route here
-app.get("/api/welcome", (req, res) => {
-  i18n.setLocale("ta"); // set locale per user
-  i18n.setLocale(req.language);
-
-  return res.status(200).json({ success: true, message: i18n.__("welcome") });
-});
 
 app.use(
   cors({

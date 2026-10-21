@@ -4,8 +4,6 @@ import {TemplateSchema} from "../models/templateModels.js";
 
 const router = express.Router();
 
-
-
 // ==========================================================================
 // Get all templates
 // ==========================================================================
