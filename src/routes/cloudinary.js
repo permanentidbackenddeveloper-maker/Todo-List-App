@@ -6,6 +6,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { getFolderByMimeType, getUserIdFromToken } from "../Helper/helper.js";
 import { authendicate } from "../middleware/middleware.js";
 import { UserLoginCredentials } from "../models/loginModels.js";
+import { BadRequestError, InternalServerError, NotFoundError, UnauthorizedError } from "../../response.js";
 
 const router = express.Router();
 
@@ -18,17 +19,21 @@ cloudinary.config({
 const upload = multer({ dest: "temp/" });
 
 router.post("/api/uploadProfilePicture",authendicate,upload.single("file"),
-  async (req, res) => {
+  async (req, res,next) => {
     try {
       const { groupId, type } = req.body;
       const token = req.header("Authorization");
-      const userId = await getUserIdFromToken(token);
+         if (!token) {
+                       throw new UnauthorizedError("Token required..");
+                     }
+               const userId = await getUserIdFromToken(token);
+                  if (!userId) {
+                 throw new NotFoundError("Can't find user details..");
+               }
       const userData = await UserLoginCredentials.findOne({ userId: userId });
 
       if (!req.file || !token) {
-        return res
-          .status(400)
-          .json({ success: false, error: "Required files missing..!!" });
+        throw new BadRequestError("Required files missing..")
       }
 
       const groupData = groupId
@@ -50,32 +55,30 @@ router.post("/api/uploadProfilePicture",authendicate,upload.single("file"),
 
       fs.unlinkSync(filePath);
       if (!result) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            error: "Error occurred while changing or updating profile picture.",
-          });
+        throw new InternalServerError("Error occurred while changing or updating profile picture..")
+      
       } else {
         userData.profilePicUrl = result.secure_url;
         await userData
           .save()
           .then(() => {
-            return res
-              .status(200)
-              .json({
-                success: true,
-                message: "Profile picture updated successfully..",
-              });
+              sendResponse(
+        res,
+        new SuccessResponse("Profile picture updated successfully..", {
+          data: {}
+        }),
+        200,
+      );
           })
           .catch((error) => {
-            return res
-              .status(400)
-              .json({ success: false, error: error.message });
+            next(error)
+            // return res
+            //   .status(400)
+            //   .json({ success: false, error: error.message });
           });
       }
     } catch (error) {
-      return res.status(500).json({ success: false, error: error.message });
+     next(error);
     }
   },
 );

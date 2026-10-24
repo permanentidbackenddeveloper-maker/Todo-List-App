@@ -50,20 +50,24 @@ export const scheduleAlarm = (task) => {
 // =================================================================================
 // Add Reminder
 // =================================================================================
-export const addReminder = async (req, res) => {
+export const addReminder = async (req, res,next) => {
   try {
     const { reminderDate, reminderTime, recurring } = req.body;
     const tdlId = req.params.id;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
 
+     if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const task = await TodolistSchema.findOne({ userId, tdlId });
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+      throw new NotFoundError("Todolist not found..");
+    
     }
     task.reminderDate = reminderDate;
     task.reminderTime = reminderTime;
@@ -71,91 +75,111 @@ export const addReminder = async (req, res) => {
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
-    return res
-      .status(200)
-      .json({ message: "Reminder added successfully", task });
+     sendResponse(
+        res,
+        new SuccessResponse("Reminder added successfully..", {
+          data: task,
+        }),
+        200,
+      );
+   
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error)
   }
 };
 
 // =================================================================================
 // Set Reminder Date
 // =================================================================================
-export const setReminderDate = async (req, res) => {
+export const setReminderDate = async (req, res,next) => {
   try {
     const { reminderDate } = req.body;
     const tdlId = req.params.id;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-
+     if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const task = await TodolistSchema.findOne({ userId, tdlId });
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+      throw new NotFoundError("Todolist not found..");
     }
     task.reminderDate = reminderDate;
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
-    return res
-      .status(200)
-      .json({ message: "Reminder date set successfully", task });
+        sendResponse(
+        res,
+        new SuccessResponse("Reminder date added successfully..", {
+          data: task,
+        }),
+        200,
+      );
+   
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error)
   }
 };
 
 // =================================================================================
 // Set Reminder Time
 // =================================================================================
-export const setReminderTime = async (req, res) => {
+export const setReminderTime = async (req, res,next) => {
   try {
     const { reminderTime } = req.body;
     const tdlId = req.params.id;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-
+       if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const task = await TodolistSchema.findOne({ userId, tdlId });
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+    throw new NotFoundError("Todolist not found..");
     }
     task.reminderTime = reminderTime;
     await task.save();
 
     scheduleAlarm(task); // schedule after saving
-    return res
-      .status(200)
-      .json({ message: "Reminder time set successfully", task });
+      sendResponse(
+        res,
+        new SuccessResponse("Reminder Time added successfully..", {
+          data: task,
+        }),
+        200,
+      );
   } catch (error) {
-    res.status(500).json({ message: error.message });
+   next(error)
   }
 };
 
 // =================================================================================
 // Edit Reminder
 // =================================================================================
-export const editReminder = async (req, res) => {
+export const editReminder = async (req, res,next) => {
   try {
     const { reminderDate, reminderTime, recurring } = req.body;
     const tdlId = req.params.id;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-
+       if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const task = await TodolistSchema.findOne({ userId, tdlId });
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+      throw new NotFoundError("Todolist not found..");
     }
     // Update only provided fields
     if (reminderDate) task.reminderDate = reminderDate;
@@ -165,30 +189,36 @@ export const editReminder = async (req, res) => {
 
     scheduleAlarm(task); // schedule after saving
 
-    return res
-      .status(200)
-      .json({ message: "Reminder updated successfully", task });
+      sendResponse(
+        res,
+        new SuccessResponse("Reminder updated successfully..", {
+          data: task,
+        }),
+        200,
+      );
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error)
   }
 };
 
 // =================================================================================
 // Delete Reminder
 // =================================================================================
-export const deleteReminder = async (req, res) => {
+export const deleteReminder = async (req, res,next) => {
   try {
     const tdlId = req.params.id;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-
+       if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const task = await TodolistSchema.findOne({ userId, tdlId });
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+      throw new NotFoundError("Todolist not found..");
     }
     // Delete reminder
     task.reminderDate = null;
@@ -198,31 +228,37 @@ export const deleteReminder = async (req, res) => {
 
     scheduleAlarm(task); // schedule after saving
 
-    return res
-      .status(200)
-      .json({ message: "Reminder deleted successfully", task });
+       sendResponse(
+        res,
+        new SuccessResponse("Reminder deleted successfully..", {
+          data: task,
+        }),
+        200,
+      );
   } catch (error) {
-    res.status(500).json({ message: error.message });
+   next(error)
   }
 };
 
 // =================================================================================
 // Snooze Reminder
 // =================================================================================
-export const snoozeReminder = async (req, res) => {
+export const snoozeReminder = async (req, res,next) => {
   // const { snoozeMinutes } = req.body; // e.g. 5, 10, 30
   try {
     const tdlId = req.params.id;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-
+      if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const task = await TodolistSchema.findOne({ userId, tdlId });
 
     if (!task) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+      throw new NotFoundError("Todolist not found..");
     }
 
     // Calculate new reminder time
@@ -242,10 +278,14 @@ export const snoozeReminder = async (req, res) => {
 
     scheduleAlarm(task); // schedule after saving
 
-    return res
-      .status(200)
-      .json({ message: "Snooze Reminder set successfully", task });
+       sendResponse(
+        res,
+        new SuccessResponse("Snooze Reminder set successfully..", {
+          data: task,
+        }),
+        200,
+      );
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error)
   }
 };

@@ -2,18 +2,23 @@ import express from "express";
 import admin from "../Helper/fcm.js";
 import { authendicate } from "../middleware/middleware.js";
 import { getUserIdFromToken } from "../Helper/helper.js";
+import { NotFoundError } from "../../response.js";
 
 const router = express.Router();
 
-router.post("/api/sentNotification", authendicate, async (req, res) => {
+router.post("/api/sentNotification", authendicate, async (req, res,next) => {
   try {
     const { title, body } = req.body;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
+        if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     if (!userId?.fcmToken) {
-      return res
-        .status(404)
-        .json({ success: false, error: "No FCM token found for user" });
+      throw new NotFoundError("No FCM token found for user")
     }
     const message = {
       notification: {
@@ -23,15 +28,16 @@ router.post("/api/sentNotification", authendicate, async (req, res) => {
       token: userId.fcmToken,
     };
     const response = await admin.messaging().send(message);
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Notification send successfully..!!",
-        response: response,
-      });
+     sendResponse(
+        res,
+        new SuccessResponse("Notification sent successfully..", {
+          data: response,
+        }),
+        200,
+      );
+
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+   next(error);
   }
 });
 

@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { customAlphabet } from "nanoid";
 import { UserLoginCredentials } from "../models/loginModels.js";
 
 // ============================================================
@@ -106,3 +107,19 @@ export const getUserDataFromToken = async (token) => {
     };
   }
 };
+// Define allowed characters: only letters + numbers
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+// Create a generator for 7-character IDs
+const generateUserId = customAlphabet(alphabet, 7);
+export async function generateUniqueUserId() {
+  let userId;
+  let exists = true;
+
+  while (exists) {
+    userId = generateUserId();
+    exists = await UserLoginCredentials.exists({ userId });
+  }
+
+  return userId;
+}

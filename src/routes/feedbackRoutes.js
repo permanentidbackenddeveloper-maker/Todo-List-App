@@ -7,25 +7,34 @@ import { UserLoginCredentials } from "../models/loginModels.js";
 const router = express.Router();
 
 // POST: Submit feedback
-router.post("/api/feedback", authendicate, async (req, res) => {
+router.post("/api/feedback", authendicate, async (req, res,next) => {
   try {
     const { message, rating } = req.body;
     const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-
+       if (!token) {
+                 throw new UnauthorizedError("Token required..");
+               }
+         const userId = await getUserIdFromToken(token);
+            if (!userId) {
+           throw new NotFoundError("Can't find user details..");
+         }
     const feedback = new Feedback({ userId, message, rating });
     await feedback.save();
-
-    return res
-      .status(200)
-      .json({ success: true, data: "Feedback sent successfully!", feedback });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    sendResponse(
+        res,
+        new SuccessResponse("Feedback sent successfully..", {
+          data: feedback,
+        }),
+        200,
+      );
+ 
+  } catch (error) {
+    next(error)
   }
 });
 
 // GET: Fetch all feedback (admin only)
-router.get("/api/fetchAllFeedback", authendicate, async (req, res) => {
+router.get("/api/fetchAllFeedback", authendicate, async (req, res,next) => {
   try {
     const feedbacks = await Feedback.find().lean();
     const enriched = await Promise.all(
@@ -39,9 +48,16 @@ router.get("/api/fetchAllFeedback", authendicate, async (req, res) => {
         };
       }),
     );
-    return res.status(200).json({ success: true, feedbacks: enriched });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+      sendResponse(
+        res,
+        new SuccessResponse("Feedbacks..", {
+          data: enriched,
+        }),
+        200,
+      );
+   
+  } catch (error) {
+   next(error)
   }
 });
 

@@ -15,7 +15,16 @@ import {
   deleteReminder,
   snoozeReminder,
 } from "../Helper/alarm.js";
-// import { syncTaskToCalendar } from "../helpers/calendar.js";
+import {
+  NotFoundError,
+  BadRequestError,
+  UnauthorizedError,
+  ForbiddenError,
+  InternalServerError,
+  ConflictError,
+  SuccessResponse,
+  sendResponse,
+} from "../../response.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -23,7 +32,11 @@ const upload = multer({ storage: multer.memoryStorage() });
 // ========================================================================
 // Creat new Todo List
 // ========================================================================
-router.post("/api/createTodolist", upload.array("file", 5), authendicate,async (req, res) => {
+router.post(
+  "/api/createTodolist",
+  upload.array("file", 5),
+  authendicate,
+  async (req, res, next) => {
     try {
       const {
         title,
@@ -39,11 +52,16 @@ router.post("/api/createTodolist", upload.array("file", 5), authendicate,async (
       let fileIds = [];
 
       const token = req.header("Authorization");
+      if (!token) {
+        throw new UnauthorizedError("Token required..");
+      }
       const userId = await getUserIdFromToken(token);
+      if (!userId) {
+        throw new NotFoundError("Can't find user details..");
+      }
       const today = new Date();
-
+      today.setHours(0, 0, 0, 0); // reset to midnight
       // Format as YYYY-MM-DD in local time
-      const formatted = today.toISOString().split("T")[0];
       const selectedDate = new Date(date);
       selectedDate.setHours(0, 0, 0, 0);
 
@@ -87,11 +105,15 @@ router.post("/api/createTodolist", upload.array("file", 5), authendicate,async (
       const task = await TodolistSchema.create(tdlStructure);
       // Schedule reminder if present
       scheduleAlarm(task);
-      return res
-        .status(200)
-        .json({ success: true, data: "Todolist created successfully!", task });
+      sendResponse(
+        res,
+        new SuccessResponse("Todolist created successfully..", {
+          data: task,
+        }),
+        201,
+      );
     } catch (error) {
-      return res.status(500).json({ success: false, error: error.message });
+      next(error);
     }
   },
 );
@@ -99,7 +121,11 @@ router.post("/api/createTodolist", upload.array("file", 5), authendicate,async (
 // ========================================================================
 // Update Todo List Details
 // ========================================================================
-router.put( "/api/updateTodolist/:id", upload.array("file", 5), authendicate, async (req, res) => {
+router.put(
+  "/api/updateTodolist/:id",
+  upload.array("file", 5),
+  authendicate,
+  async (req, res, next) => {
     try {
       const {
         title,
@@ -114,6 +140,8 @@ router.put( "/api/updateTodolist/:id", upload.array("file", 5), authendicate, as
       } = req.body;
 
       const tdlId = req.params.id;
+      const task = await TodolistSchema.findOne({ tdlId });
+      if (!task) throw new NotFoundError("Todolist not Found");
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -166,14 +194,17 @@ router.put( "/api/updateTodolist/:id", upload.array("file", 5), authendicate, as
         { new: true },
       );
       if (!updatedTask) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Todolist not found" });
+        throw new NotFoundError("Todolist not found..");
       }
-
-      return res.status(200).json({ success: true, data: updatedTask });
+      sendResponse(
+        res,
+        new SuccessResponse("Todolist updated successfully..", {
+          data: updatedTask,
+        }),
+        200,
+      );
     } catch (error) {
-      return res.status(500).json({ success: false, error: error.message });
+      next(error);
     }
   },
 );
@@ -182,35 +213,33 @@ router.put( "/api/updateTodolist/:id", upload.array("file", 5), authendicate, as
 // Update Todo List Status
 // ========================================================================
 
-router.put("/api/updateTdlStatus/:tdlId",authendicate,async (req, res) => {
+router.put(
+  "/api/updateTdlStatus/:tdlId",
+  authendicate,
+  async (req, res, next) => {
     try {
       const { tdlId } = req.params;
       const { status } = req.body;
-
+      if (!status) {
+        throw new BadRequestError("Status is required");
+      }
       const validStatuses = ["Upcoming", "Today", "Completed"];
 
-      if (!tdlId) {
-        return res.status(400).json({
-          success: false,
-          message: "Task ID is required.",
-        });
-      }
+      if (!tdlId) throw new BadRequestError("Task ID is required..");
 
       if (!validStatuses.includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid status value.",
-        });
+        throw new BadRequestError("Invalid status value..");
       }
 
       const token = req.header("Authorization");
+      if (!token) {
+        throw new UnauthorizedError("Token required..");
+      }
+
       const userId = await getUserIdFromToken(token);
 
       if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Invalid authentication token.",
-        });
+        throw new UnauthorizedError("Invalid authentication token..");
       }
 
       const task = await TodolistSchema.findOne({
@@ -218,12 +247,7 @@ router.put("/api/updateTdlStatus/:tdlId",authendicate,async (req, res) => {
         userId: String(userId),
       });
 
-      if (!task) {
-        return res.status(404).json({
-          success: false,
-          message: "Task not found for this user.",
-        });
-      }
+      if (!task) throw new NotFoundError("Task not found for this user..");
 
       task.status = status;
       task.updatedAt = new Date();
@@ -235,84 +259,52 @@ router.put("/api/updateTdlStatus/:tdlId",authendicate,async (req, res) => {
         status,
         userId: String(userId),
       });
-
-      return res.status(200).json({
-        success: true,
-        message: "Task status updated successfully.",
-        task,
-      });
+      sendResponse(
+        res,
+        new SuccessResponse("Todolist status updated successfully..", {
+          data: task,
+        }),
+        200,
+      );
     } catch (error) {
-      console.error("Update task status error:", error);
-
-      return res.status(500).json({
-        success: false,
-        message: "Server error while updating task status.",
-      });
+      next(error);
     }
-  }
+  },
 );
-
-// ========================================================================
-// Get Todo List
-// ========================================================================
-
-router.post("/api/getTodos", authendicate, async (req, res) => {
-  try {
-    const token = req.header("Authorization");
-    const userId = await getUserIdFromToken(token);
-    const getTodos = await TodolistSchema.find(
-      { userId: userId },
-      { __v: 0, _id: 0, createdAt: 0, updatedAt: 0 },
-    );
-    if (getTodos.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "There is no Todos for this user",
-        data: [],
-      });
-    }
-    return res.status(200).json({ success: true, data: getTodos });
-  } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // =========================================================================
 // Get All Todo List
 // =========================================================================
 
-router.get("/api/todolist", authendicate, async (req, res) => {
+router.get("/api/todolist", authendicate, async (req, res, next) => {
   try {
     const userId = await getUserIdFromToken(req.header("Authorization"));
     const tasks = await TodolistSchema.find({ userId }).sort({ date: 1 });
-
-    return res.status(200).json({ success: true, data: tasks });
+    sendResponse(
+      res,
+      new SuccessResponse("Todolists..", {
+        data: tasks,
+      }),
+      200,
+    );
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    next(error);
   }
 });
 
 // =========================================================================
 // Get Todo List Medai by ID
 // =========================================================================
-router.get("/api/media/:id", async (req, res) => {
+router.get("/api/media/:id", async (req, res, next) => {
   try {
     // Check Gridfsbucket is initialized
-    if (!gridfsbucket) {
-      return res.status(500).json({
-        success: false,
-        message: "GridFS is not initialized.",
-      });
-    }
+    if (!gridfsbucket)
+      throw new InternalServerError("GridFS is not initialized.");
 
     const fileId = String(req.params.id).trim();
 
-    if (!mongoose.Types.ObjectId.isValid(fileId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid media ID.",
-      });
-    }
+    if (!mongoose.Types.ObjectId.isValid(fileId))
+      throw new BadRequestError("Invalid media ID..");
 
     const objectId = new mongoose.Types.ObjectId(fileId);
 
@@ -328,12 +320,8 @@ router.get("/api/media/:id", async (req, res) => {
       .limit(1)
       .toArray();
 
-    if (!files || files.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Media file not found.",
-      });
-    }
+    if (!files || files.length === 0)
+      throw new NotFoundError("Media file not found..");
 
     const file = files[0];
 
@@ -343,6 +331,7 @@ router.get("/api/media/:id", async (req, res) => {
 
     res.set("Content-Type", file.contentType || "application/octet-stream");
     res.set("Cache-Control", "public, max-age=3600");
+    res.set("Content-Disposition", "inline");
 
     // ------------------------------------------------------
     // DOWNLOAD
@@ -353,25 +342,15 @@ router.get("/api/media/:id", async (req, res) => {
     downloadStream.on("error", (error) => {
       console.error("❌ GRIDFS DOWNLOAD ERROR:", error);
 
-      if (!res.headersSent) {
-        res.status(404).json({
-          success: false,
-          message: "Media not found.",
-        });
-      }
+      if (!res.headersSent) throw new NotFoundError("Media file not found");
     });
 
     downloadStream.pipe(res);
   } catch (error) {
     console.error("❌ MEDIA GET ERROR:", error);
 
-    if (!res.headersSent) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to load media.",
-        error: error.message,
-      });
-    }
+    if (!res.headersSent)
+      throw new InternalServerError("Failed to load media...");
   }
 });
 
@@ -379,35 +358,37 @@ router.get("/api/media/:id", async (req, res) => {
 // Delete Todo List
 // =========================================================================
 
-router.post("/api/deleteTodos/:id", authendicate, async (req, res) => {
+router.post("/api/deleteTodos/:id", authendicate, async (req, res, next) => {
   try {
     const tdlId = req.params.id;
     const token = req.header("Authorization");
+    if (!token) {
+      throw new UnauthorizedError("Token required..");
+    }
     const userId = await getUserIdFromToken(token);
-
-    const isexist = await TodolistSchema.find({ userId, tdlId });
+    if (!userId) {
+      throw new NotFoundError("Can't find user details..");
+    }
+    const isexist = await TodolistSchema.findOne({ tdlId });
+console.log(isexist);
 
     if (!isexist) {
-      return res.status(404).json({
-        success: false,
-        message: "Todolist not found.",
-      });
+      throw new NotFoundError("Todolist not found..");
     }
 
     const deleteTodos = await TodolistSchema.findOneAndDelete({
       userId: userId,
       tdlId: tdlId,
     });
-    if (!deleteTodos) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Can't delete this Todo." });
-    }
-    return res
-      .status(200)
-      .json({ success: true, data: "Todo deleted successfully..!!" });
+    if (!deleteTodos) throw new BadRequestError("Can't delete this Todo..");
+
+    sendResponse(
+      res,
+      new SuccessResponse("Todo deleted successfully..", {}),
+      200,
+    );
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    next(error);
   }
 });
 
@@ -441,12 +422,16 @@ router.post("/api/deleteReminder/:id", authendicate, deleteReminder);
 // ========================================================================
 router.post("/api/snoozeReminder/:id", authendicate, snoozeReminder);
 
-router.post("/api/changePinNote/:id", async (req, res) => {
+// ========================================================================
+// Change PIN Note
+// ========================================================================
+router.post("/api/changePinNote/:id", async (req, res, next) => {
   try {
     const { pin } = req.body;
 
     const tdlId = req.params.id;
-
+if(!tdlId)
+  throw new NotFoundError("Todolist not found..")
     // Update everything
     const updateData = {
       $set: { isPin: pin },
@@ -457,77 +442,97 @@ router.post("/api/changePinNote/:id", async (req, res) => {
       { new: true },
     );
     if (!updatedPinTask) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Todolist not found" });
+      throw new NotFoundError("Todolist not found..");
     }
 
-    return res.status(200).json({ success: true, data: updatedPinTask });
+    sendResponse(
+      res,
+      new SuccessResponse("Pin Note Changed..", {
+        data: updatedPinTask,
+      }),
+      200,
+    );
   } catch (error) {
-    return res.status(500).json({ success: false, error: error.message });
+    next(error);
   }
 });
 
-router.post("/api/lockNote/:id", async (req, res) => {
+// ========================================================================
+// Lock Note
+// ========================================================================
+router.post("/api/lockNote/:id", authendicate, async (req, res, next) => {
   try {
     const { lockPin } = req.body;
     const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    if (!token) {
+      throw new UnauthorizedError("Token required..");
+    }
 
+    const userId = await getUserIdFromToken(token);
+    if (!userId) {
+      throw new NotFoundError("UserID not found..");
+    }
     const noteData = await TodolistSchema.findOne({ tdlId: tdlId });
     if (!noteData) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Todolist not found..!!" });
+      throw new NotFoundError("Todolist not found..");
     }
     await noteData.setPin(lockPin);
     noteData.locked = true;
     await noteData.save();
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Note Locked successfully..!!",
+    sendResponse(
+      res,
+      new SuccessResponse("Note Locked successfully..", {
         data: noteData,
-      });
+      }),
+      200,
+    );
   } catch (error) {
-    return res.status(500).json({ success: true, error: error.message });
+    next(error);
   }
 });
-router.post("/api/unlockNote/:id", async (req, res) => {
+
+// ========================================================================
+// Unlock Note
+// ========================================================================
+router.post("/api/unlockNote/:id", authendicate, async (req, res, next) => {
   try {
     const { lockPin } = req.body;
     const tdlId = req.params.id;
+    const token = req.header("Authorization");
+    if (!token) {
+      throw new UnauthorizedError("Token required..");
+    }
+
+    const userId = await getUserIdFromToken(token);
+    if (!userId) throw new NotFoundError("UserID not found..");
 
     const noteData = await TodolistSchema.findOne({ tdlId: tdlId });
-    if (!noteData) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Todolist not found..!!" });
-    }
+    if (!noteData) throw new NotFoundError("Todolist not found..");
     if (!noteData.locked) {
-      return res.json({ message: "Note is not locked" });
+      throw new BadRequestError("Note is not locked..");
     }
 
     const valid = await noteData.verifyPin(lockPin);
 
     if (!valid) {
-      return res.json({ message: "Invalid PIN" });
+      throw new UnauthorizedError("Invalid PIN");
     }
 
     noteData.locked = false;
     noteData.lockPin = null;
     await noteData.save();
 
-    return res
-      .status(200)
-      .json({
-        success: true,
-        message: "Note Unlocked successfully..!!",
+    sendResponse(
+      res,
+      new SuccessResponse("Note Unlocked successfully..", {
         data: noteData,
-      });
+      }),
+      200,
+    );
   } catch (error) {
-    return res.status(500).json({ success: true, error: error.message });
+    next(error);
   }
 });
 

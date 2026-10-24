@@ -6,15 +6,36 @@ export const UserLoginCredentials = mongoose.model(
   "UserLoginCredentials",
   new Schema(
     {
-      userId: String,
-      userName: String,
-      email: String,
-      password: String,
-      profilePicUrl: String,
-      fcmToken: String,
-      isLoggedin: Boolean,
-      Description: String,
-      language: { type: String, default: "en" }, // en, ta, hi, etc.
+      userId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+      userName: {
+      type: String,
+      required: true,
+    },
+      email: {
+      type: String,
+      required: true
+    },
+      password: {
+      type: String,
+      required: true
+    },
+      profilePicUrl: {
+      type: String
+    },
+      fcmToken: {
+      type: String
+    },
+      isLoggedin: {
+      type: String
+    },
+      Description: {
+      type: String
+    },
+     
       pinedUsers: [
         {
           userName: String,

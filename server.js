@@ -17,7 +17,7 @@ import { TodolistSchema } from "./src/models/todolistModels.js";
 import { scheduleAlarm } from "./src/Helper/alarm.js";
 import "./src/config/db.js"; // ensures DB + GridFSBucket initialized
 import { initiateApp } from "./src/helper/apiHelper.js";
-
+import { errorHandler } from "./src/middleware/errorHandler.js";
 import { seed } from "./src/routes/seedTemplates.js";
 
 // ======================================================
@@ -48,10 +48,6 @@ app.get("/api/userLoginOrLogout1", (req, res) => {
 });
 
 const port = Number(process.env.PORT) || 5001;
-
-// ======================================================
-// CORS
-// ======================================================
 
 
 app.use(
@@ -186,3 +182,5 @@ const shutdown = async (signal) => {
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
+// Error handler must be last
+app.use(errorHandler);

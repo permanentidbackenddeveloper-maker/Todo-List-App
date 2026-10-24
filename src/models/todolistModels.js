@@ -81,4 +81,4 @@ todolistSchema.methods.verifyPin = async function (pin) {
   return await bcrypt.compare(pin, this.lockPin);
 };
 
-export const TodolistSchema = mongoose.model("Todolist", todolistSchema);
+export const TodolistSchema = mongoose.model("TodolistSchema", todolistSchema, "TodolistSchema"  );
